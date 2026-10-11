@@ -1,0 +1,57 @@
+grammars:
+  .cs: csharp
+scopes:
+  test:
+    match: |
+      ((method_declaration
+         (attribute_list (attribute name: (identifier) @_a))
+         name: (identifier) @phrase) @candidate @source
+       (#any-of? @_a "Fact" "Theory" "Test" "TestCase" "TestCaseSource" "TestMethod" "DataTestMethod"))
+    fields:
+      assertion: |
+        ((expression_statement (_) @assertion)
+          (#match? @assertion "^(await\\s+)?((Classic|Collection|String)?Assert\\.|\\S.*\\.Should(Be)?\\b)"))
+      message: |
+        ((invocation_expression
+           function: (member_access_expression expression: (identifier) @_a)
+           arguments: (argument_list (_) (argument [(string_literal) (interpolated_string_expression) (verbatim_string_literal)] @message) .))
+         (#match? @_a "Assert$"))
+        ((invocation_expression
+           function: (member_access_expression expression: (invocation_expression function: (member_access_expression name: (identifier) @_s)))
+           arguments: (argument_list (_) (argument [(string_literal) (interpolated_string_expression)] @message) .))
+         (#eq? @_s "Should"))
+  type:
+    match: |
+      (class_declaration name: (identifier) @name) @candidate
+      (interface_declaration name: (identifier) @name) @candidate
+      (struct_declaration name: (identifier) @name) @candidate
+      (record_declaration name: (identifier) @name) @candidate
+      (enum_declaration name: (identifier) @name) @candidate
+  function:
+    match: |
+      ((method_declaration (modifier) @_m returns: (_) @returns name: (identifier) @name) @candidate
+        (#eq? @_m "public"))
+      (interface_declaration body: (declaration_list (method_declaration returns: (_) @returns name: (identifier) @name) @candidate))
+  variable:
+    match: |
+      (parameter name: (identifier) @name) @candidate
+      (variable_declarator name: (identifier) @name) @candidate
+      (property_declaration name: (identifier) @name) @candidate
+      (catch_declaration name: (identifier) @name) @candidate
+      (foreach_statement left: (identifier) @name) @candidate
+  throw:
+    match: |
+      (throw_statement) @candidate @statement
+      (throw_expression) @candidate @statement
+    fields:
+      message: |
+        (object_creation_expression arguments: (argument_list . (argument [(string_literal) (interpolated_string_expression) (verbatim_string_literal) (binary_expression)] @message)))
+  catch:
+    match: |
+      (catch_clause) @candidate @handler
+  log:
+    match: |
+      ((invocation_expression
+         function: (member_access_expression expression: (_) @_o name: (identifier) @_m)) @candidate @statement
+       (#match? @_o "(^|\\.)(_*[Ll]og(ger)?|LOG|LOGGER)$")
+       (#match? @_m "^(Log)?(Trace|Debug|Information|Info|Warning|Warn|Error|Critical|Fatal|Verbose)$"))

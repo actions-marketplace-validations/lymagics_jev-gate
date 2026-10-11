@@ -1,0 +1,52 @@
+grammars:
+  .rb: ruby
+  .rake: ruby
+scopes:
+  test:
+    match: |
+      ((call method: (identifier) @_f arguments: (argument_list . (string) @phrase)) @candidate @source
+        (#any-of? @_f "it" "specify" "test" "scenario" "example"))
+      ((method name: (identifier) @phrase) @candidate @source (#match? @phrase "^test_"))
+    fields:
+      assertion: |
+        ((call method: (identifier) @_m) @assertion (#match? @_m "^(assert|refute)"))
+        ((call receiver: (call method: (identifier) @_e) method: (identifier) @_t) @assertion
+          (#any-of? @_e "expect" "is_expected") (#any-of? @_t "to" "not_to" "to_not"))
+      message: |
+        ((call method: (identifier) @_m arguments: (argument_list (_) (string) @message .))
+          (#match? @_m "^(assert|refute)"))
+        ((call method: (identifier) @_t arguments: (argument_list (_) (string) @message .))
+          (#any-of? @_t "to" "not_to" "to_not"))
+  type:
+    match: |
+      (class name: (_) @name) @candidate
+      (module name: (_) @name) @candidate
+  function:
+    match: |
+      (method name: (_) @name) @candidate
+      (singleton_method name: (_) @name) @candidate
+  variable:
+    match: |
+      (assignment left: (identifier) @name) @candidate
+      (assignment left: (instance_variable) @name) @candidate
+      (operator_assignment left: [(identifier) (instance_variable)] @name) @candidate
+      (method_parameters (identifier) @name @candidate)
+      (optional_parameter name: (identifier) @name) @candidate
+      (keyword_parameter name: (identifier) @name) @candidate
+      (block_parameters (identifier) @name @candidate)
+      (exception_variable (identifier) @name) @candidate
+  throw:
+    match: |
+      ((call method: (identifier) @_r) @candidate @statement (#any-of? @_r "raise" "fail"))
+    fields:
+      message: |
+        (argument_list (string) @message)
+  catch:
+    match: |
+      (rescue) @candidate @handler
+      (rescue_modifier) @candidate @handler
+  log:
+    match: |
+      ((call receiver: (_) @_o method: (identifier) @_m) @candidate @statement
+        (#match? @_o "(^|\\.)(@?_*logger|@?_*log|LOG|LOGGER|Logger)$")
+        (#any-of? @_m "debug" "info" "warn" "error" "fatal" "unknown"))

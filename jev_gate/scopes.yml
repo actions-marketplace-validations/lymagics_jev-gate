@@ -1,0 +1,11 @@
+file: {fields: [path, text], modes: [diff, full]}
+hunk: {fields: [path, before, after], modes: [diff]}
+commit: {fields: [subject, message, diff, tests], modes: [diff]}
+test: {fields: [phrase, message, assertion, source], modes: [diff, full]}
+changed_test: {fields: [before, after], modes: [diff]}
+type: {fields: [name], modes: [diff, full]}
+function: {fields: [name, returns], modes: [diff, full]}
+variable: {fields: [name], modes: [diff, full]}
+throw: {fields: [message, statement], modes: [diff, full]}
+catch: {fields: [handler], modes: [diff, full]}
+log: {fields: [statement], modes: [diff, full]}

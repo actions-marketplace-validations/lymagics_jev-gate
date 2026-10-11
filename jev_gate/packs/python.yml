@@ -1,0 +1,61 @@
+grammars:
+  .py: python
+  .pyi: python
+scopes:
+  test:
+    match: |
+      ((function_definition name: (identifier) @phrase) @candidate @source
+        (#match? @phrase "^test"))
+    fields:
+      assertion: |
+        (assert_statement) @assertion
+        ((call function: (identifier) @_f) @assertion (#match? @_f "^assert"))
+        ((call function: (attribute attribute: (identifier) @_f)) @assertion (#match? @_f "^assert"))
+      message: |
+        (assert_statement (_) . [(string) (concatenated_string) (binary_operator)] @message .)
+        ((call
+           function: [(identifier) (attribute attribute: (identifier))] @_f
+           arguments: (argument_list (_) [(string) (concatenated_string)] @message .))
+         (#match? @_f "(^|\\.)assert"))
+        ((call
+           function: [(identifier) (attribute attribute: (identifier))] @_f
+           arguments: (argument_list
+             (keyword_argument name: (identifier) @_k value: (_) @message)))
+         (#match? @_f "(^|\\.)assert")
+         (#any-of? @_k "msg" "message" "reason"))
+  type:
+    match: |
+      (class_definition name: (identifier) @name) @candidate
+  function:
+    match: |
+      ((function_definition name: (identifier) @name return_type: (_)? @returns) @candidate
+        (#not-match? @name "^_"))
+  variable:
+    match: |
+      ((parameters (identifier) @name @candidate) (#not-match? @name "^(self|cls)$"))
+      ((typed_parameter . (identifier) @name) @candidate (#not-match? @name "^(self|cls)$"))
+      (default_parameter name: (identifier) @name) @candidate
+      (typed_default_parameter name: (identifier) @name) @candidate
+      (lambda_parameters (identifier) @name @candidate)
+      (assignment left: (identifier) @name) @candidate
+      (augmented_assignment left: (identifier) @name) @candidate
+      ((assignment left: (attribute object: (identifier) @_self attribute: (identifier) @name)) @candidate
+        (#eq? @_self "self"))
+      (for_statement left: (identifier) @name) @candidate
+      (as_pattern alias: (as_pattern_target (identifier) @name)) @candidate
+  throw:
+    match: |
+      (raise_statement) @candidate @statement
+    fields:
+      message: |
+        (raise_statement (call arguments: (argument_list . [(string) (concatenated_string) (binary_operator)] @message)))
+        (raise_statement . [(string) (concatenated_string)] @message)
+  catch:
+    match: |
+      (except_clause) @candidate @handler
+  log:
+    match: |
+      ((call
+         function: (attribute object: (_) @_o attribute: (identifier) @_m)) @candidate @statement
+       (#match? @_o "(^|\\.)(_*log|_*logger|logging|LOG|LOGGER|log_\\w+|\\w+_log(ger)?)$")
+       (#any-of? @_m "debug" "info" "warning" "warn" "error" "exception" "critical" "fatal" "log"))

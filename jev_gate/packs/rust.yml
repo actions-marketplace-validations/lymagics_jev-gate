@@ -1,0 +1,64 @@
+grammars:
+  .rs: rust
+scopes:
+  test:
+    match: |
+      ((attribute_item (attribute [(identifier) (scoped_identifier)] @_a))
+       .
+       (attribute_item)*
+       .
+       (function_item name: (identifier) @phrase) @candidate @source
+       (#match? @_a "(^|::)test$"))
+    fields:
+      assertion: |
+        ((macro_invocation macro: (identifier) @_m) @assertion
+         (#match? @_m "^(debug_)?assert"))
+      message: |
+        ((macro_invocation macro: (identifier) @_m (token_tree (_) (_) (string_literal) @message .))
+         (#match? @_m "^(debug_)?assert_(eq|ne)$"))
+        ((macro_invocation macro: (identifier) @_m (token_tree . (_) (string_literal) @message .))
+         (#match? @_m "^(debug_)?assert$"))
+  type:
+    match: |
+      (struct_item name: (type_identifier) @name) @candidate
+      (enum_item name: (type_identifier) @name) @candidate
+      (union_item name: (type_identifier) @name) @candidate
+      (trait_item name: (type_identifier) @name) @candidate
+      (type_item name: (type_identifier) @name) @candidate
+  function:
+    match: |
+      (function_item (visibility_modifier) name: (identifier) @name return_type: (_)? @returns) @candidate
+      (trait_item body: (declaration_list (function_signature_item name: (identifier) @name return_type: (_)? @returns) @candidate))
+      (trait_item body: (declaration_list (function_item name: (identifier) @name return_type: (_)? @returns) @candidate))
+    defaults:
+      returns: "()"
+  variable:
+    match: |
+      (parameter pattern: (identifier) @name) @candidate
+      (let_declaration pattern: (identifier) @name) @candidate
+      (let_declaration pattern: (mut_pattern (identifier) @name)) @candidate
+      (field_declaration name: (field_identifier) @name) @candidate
+      (closure_parameters (identifier) @name @candidate)
+      (for_expression pattern: (identifier) @name) @candidate
+  throw:
+    match: |
+      ((call_expression function: (identifier) @_e) @candidate @statement (#eq? @_e "Err"))
+      ((macro_invocation macro: (identifier) @_m) @candidate @statement
+        (#any-of? @_m "panic" "unreachable" "todo" "unimplemented" "bail"))
+    fields:
+      message: |
+        (string_literal) @message
+        (raw_string_literal) @message
+  catch:
+    match: |
+      ((match_arm pattern: (match_pattern (tuple_struct_pattern type: (identifier) @_e))) @candidate @handler
+        (#eq? @_e "Err"))
+      ((let_condition pattern: (tuple_struct_pattern type: (identifier) @_e)) @candidate @handler
+        (#eq? @_e "Err"))
+      ((call_expression function: (field_expression field: (field_identifier) @_f)) @candidate @handler
+        (#eq? @_f "ok"))
+      ((let_declaration) @candidate @handler (#match? @candidate "^let\\s+_\\s*[=:]"))
+  log:
+    match: |
+      ((macro_invocation macro: [(identifier) (scoped_identifier)] @_m) @candidate @statement
+        (#match? @_m "^((log|tracing)::)?(trace|debug|info|warn|error)$"))

@@ -1,0 +1,60 @@
+grammars:
+  .java: java
+scopes:
+  test:
+    match: |
+      ((method_declaration
+         (modifiers [(marker_annotation name: (identifier) @_a) (annotation name: (identifier) @_a)])
+         name: (identifier) @phrase) @candidate @source
+       (#any-of? @_a "Test" "ParameterizedTest" "RepeatedTest" "TestFactory" "TestTemplate"))
+    fields:
+      assertion: |
+        ((expression_statement (method_invocation) @assertion)
+         (#match? @assertion "^(\\w+\\.)?(assert|verify|fail)"))
+      message: |
+        ((method_invocation
+           name: (identifier) @_n
+           arguments: (argument_list . [(string_literal) (binary_expression)] @message (_) (_)))
+         (#match? @_n "^assert"))
+        ((method_invocation
+           name: (identifier) @_n
+           arguments: (argument_list (_) [(string_literal) (binary_expression)] @message .))
+         (#match? @_n "^(assert(?!That$)|fail)"))
+        ((method_invocation name: (identifier) @_n arguments: (argument_list . (_) @message))
+         (#any-of? @_n "as" "describedAs" "withFailMessage" "overridingErrorMessage" "fail"))
+  type:
+    match: |
+      (class_declaration name: (identifier) @name) @candidate
+      (interface_declaration name: (identifier) @name) @candidate
+      (enum_declaration name: (identifier) @name) @candidate
+      (record_declaration name: (identifier) @name) @candidate
+      (annotation_type_declaration name: (identifier) @name) @candidate
+  function:
+    match: |
+      ((method_declaration (modifiers) @_m type: (_) @returns name: (identifier) @name) @candidate
+        (#match? @_m "\\bpublic\\b"))
+      (interface_body (method_declaration type: (_) @returns name: (identifier) @name) @candidate)
+  variable:
+    match: |
+      (formal_parameter name: (identifier) @name) @candidate
+      (spread_parameter (variable_declarator name: (identifier) @name)) @candidate
+      (local_variable_declaration declarator: (variable_declarator name: (identifier) @name) @candidate)
+      (field_declaration declarator: (variable_declarator name: (identifier) @name) @candidate)
+      (catch_formal_parameter name: (identifier) @name) @candidate
+      (enhanced_for_statement name: (identifier) @name) @candidate
+      (lambda_expression parameters: (identifier) @name @candidate)
+      (inferred_parameters (identifier) @name @candidate)
+  throw:
+    match: |
+      (throw_statement) @candidate @statement
+    fields:
+      message: |
+        (throw_statement (object_creation_expression arguments: (argument_list . [(string_literal) (binary_expression) (method_invocation)] @message)))
+  catch:
+    match: |
+      (catch_clause) @candidate @handler
+  log:
+    match: |
+      ((method_invocation object: (_) @_o name: (identifier) @_m) @candidate @statement
+       (#match? @_o "(^|\\.)(_*log|_*logger|LOG|LOGGER|Log|Logger)$")
+       (#any-of? @_m "trace" "debug" "info" "warn" "warning" "error" "fatal" "severe" "fine" "finer" "finest" "config" "log"))

@@ -1,0 +1,62 @@
+grammars:
+  .ts: typescript
+  .mts: typescript
+  .cts: typescript
+  .tsx: tsx
+scopes:
+  test:
+    match: |
+      ((call_expression
+         function: [(identifier) (member_expression object: (identifier))] @_f
+         arguments: (arguments . [(string) (template_string)] @phrase)) @candidate @source
+       (#match? @_f "^(it|test|specify)(\\.|$)"))
+    fields:
+      assertion: |
+        ((expression_statement (_) @assertion) (#match? @assertion "^(await\\s+)?(expect|assert|should)\\b"))
+      message: |
+        ((call_expression
+           function: [(identifier) (member_expression)] @_f
+           arguments: (arguments (_) [(string) (template_string)] @message .))
+         (#match? @_f "^(expect|assert)"))
+  type:
+    match: |
+      (class_declaration name: (type_identifier) @name) @candidate
+      (abstract_class_declaration name: (type_identifier) @name) @candidate
+      (interface_declaration name: (type_identifier) @name) @candidate
+      (type_alias_declaration name: (type_identifier) @name) @candidate
+      (enum_declaration name: (identifier) @name) @candidate
+  function:
+    match: |
+      (function_declaration name: (identifier) @name return_type: (type_annotation (_) @returns)?) @candidate
+      (generator_function_declaration name: (identifier) @name return_type: (type_annotation (_) @returns)?) @candidate
+      ((method_definition name: (property_identifier) @name return_type: (type_annotation (_) @returns)?) @candidate
+        (#not-match? @candidate "^(private|protected)\\s"))
+      (method_signature name: (property_identifier) @name return_type: (type_annotation (_) @returns)?) @candidate
+      (abstract_method_signature name: (property_identifier) @name return_type: (type_annotation (_) @returns)?) @candidate
+      (variable_declarator name: (identifier) @name value: [(arrow_function return_type: (type_annotation (_) @returns)?) (function_expression return_type: (type_annotation (_) @returns)?)]) @candidate
+  variable:
+    match: |
+      (variable_declarator name: (identifier) @name) @candidate
+      (required_parameter pattern: (identifier) @name) @candidate
+      (optional_parameter pattern: (identifier) @name) @candidate
+      (arrow_function parameter: (identifier) @name @candidate)
+      (public_field_definition name: (property_identifier) @name) @candidate
+      (catch_clause parameter: (identifier) @name @candidate)
+  throw:
+    match: |
+      (throw_statement) @candidate @statement
+    fields:
+      message: |
+        (throw_statement [(new_expression arguments: (arguments . (_) @message)) (call_expression arguments: (arguments . (_) @message))])
+        (throw_statement [(string) (template_string)] @message)
+  catch:
+    match: |
+      (catch_clause) @candidate @handler
+      ((call_expression function: (member_expression property: (property_identifier) @_p)) @candidate @handler
+        (#eq? @_p "catch"))
+  log:
+    match: |
+      ((call_expression
+         function: (member_expression object: (_) @_o property: (property_identifier) @_m)) @candidate @statement
+       (#match? @_o "(^|\\.)(console|_*log|_*logger|LOG|LOGGER)$")
+       (#any-of? @_m "log" "debug" "info" "warn" "warning" "error" "trace" "fatal"))

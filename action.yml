@@ -1,0 +1,38 @@
+name: Jev Gate
+description: Fails the pipeline when code breaks a quality rule that only a reader could check.
+branding:
+  icon: check-circle
+  color: blue
+inputs:
+  config:
+    description: Path to the gates file.
+    required: false
+    default: .github/jev-gates.yml
+  mode:
+    description: "'diff' judges candidates the change touches; 'full' judges every candidate."
+    required: false
+    default: diff
+  base:
+    description: Commit the change is compared with; required in diff mode.
+    required: false
+    default: ""
+  jobs:
+    description: Requests sent to Jev in parallel.
+    required: false
+    default: "8"
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+    - shell: bash
+      run: python -m pip install --quiet --disable-pip-version-check "${{ github.action_path }}"
+    - shell: bash
+      run: >-
+        python -m jev_gate
+        --config "${{ inputs.config }}"
+        --mode "${{ inputs.mode }}"
+        --base "${{ inputs.base }}"
+        --jobs "${{ inputs.jobs }}"
+        --root "${{ github.workspace }}"

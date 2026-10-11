@@ -1,0 +1,70 @@
+grammars:
+  .cpp: cpp
+  .cc: cpp
+  .cxx: cpp
+  .c++: cpp
+  .hpp: cpp
+  .hh: cpp
+  .hxx: cpp
+  .h: cpp
+scopes:
+  test:
+    match: |
+      ((function_definition
+         declarator: (function_declarator
+           declarator: (identifier) @_t
+           parameters: (parameter_list (parameter_declaration) . (parameter_declaration type: (_) @phrase) .))) @candidate @source
+       (#match? @_t "^(TEST|TEST_F|TEST_P|TYPED_TEST|TYPED_TEST_P)$"))
+      ((expression_statement
+         (call_expression function: (identifier) @_t arguments: (argument_list . (string_literal) @phrase))) @candidate @source
+       .
+       (compound_statement) @candidate @source
+       (#any-of? @_t "TEST_CASE" "SCENARIO"))
+      ((expression_statement
+         (call_expression function: (identifier) @_t arguments: (argument_list . (_) . (string_literal) @phrase))) @candidate @source
+       .
+       (compound_statement) @candidate @source
+       (#any-of? @_t "TEST_CASE_METHOD" "TEST_CASE_FIXTURE"))
+    fields:
+      assertion: |
+        ((call_expression function: (identifier) @_a) @assertion
+          (#match? @_a "^(EXPECT_|ASSERT_|REQUIRE|CHECK|static_assert)"))
+      message: |
+        ((binary_expression left: (call_expression function: (identifier) @_a) right: (string_literal) @message)
+          (#match? @_a "^(EXPECT_|ASSERT_)"))
+        ((call_expression function: (identifier) @_a arguments: (argument_list (_) (string_literal) @message .))
+          (#match? @_a "_MESSAGE$"))
+  type:
+    match: |
+      (class_specifier name: (type_identifier) @name body: (_)) @candidate
+      (struct_specifier name: (type_identifier) @name body: (_)) @candidate
+      (union_specifier name: (type_identifier) @name body: (_)) @candidate
+      (enum_specifier name: (type_identifier) @name body: (_)) @candidate
+  function:
+    match: |
+      (function_definition type: (_) @returns declarator: (function_declarator declarator: (_) @name)) @candidate
+      (function_definition type: (_) @returns declarator: (_ (function_declarator declarator: (_) @name))) @candidate
+  variable:
+    match: |
+      (parameter_declaration declarator: (identifier) @name) @candidate
+      (parameter_declaration declarator: (_ (identifier) @name)) @candidate
+      (optional_parameter_declaration declarator: (identifier) @name) @candidate
+      (declaration declarator: (identifier) @name @candidate)
+      (declaration declarator: (init_declarator declarator: (identifier) @name) @candidate)
+      (field_declaration declarator: (field_identifier) @name @candidate)
+      (for_range_loop declarator: (identifier) @name) @candidate
+  throw:
+    match: |
+      (throw_statement) @candidate @statement
+    fields:
+      message: |
+        (throw_statement (_ (argument_list . [(string_literal) (raw_string_literal) (concatenated_string)] @message)))
+  catch:
+    match: |
+      (catch_clause) @candidate @handler
+  log:
+    match: |
+      ((expression_statement) @candidate @statement
+        (#match? @candidate "^(LOG|VLOG|DLOG|PLOG|LOG_IF|LOG_EVERY_N|SPDLOG_[A-Z]+|spdlog::(trace|debug|info|warn|error|critical))\\s*\\("))
+      ((expression_statement) @candidate @statement
+        (#match? @candidate "^(\\w+(\\.|->|::))*(_*logger|_*log|m_logger|m_log|LOGGER)\\w*(\\.|->)(trace|debug|info|warn|warning|error|critical|fatal)\\s*\\("))

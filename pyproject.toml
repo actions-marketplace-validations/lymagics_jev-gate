@@ -1,0 +1,68 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jev-gate"
+version = "0.1.0"
+description = "Fails a pipeline when code breaks a quality rule that only a reader could check."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+dependencies = [
+    "typesafe-sdk==0.7.4",
+    "pyyaml==6.0.3",
+    "tree-sitter==0.26.0",
+    "tree-sitter-language-pack==1.21.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.1.1",
+    "pyhamcrest==2.1.0",
+    "pytest-randomly==5.0.0",
+    "pytest-fail-slow==0.6.0",
+    "pytest-repeat==0.9.4",
+    "pytest-cov==7.1.0",
+    "hypothesis==6.169.0",
+    "black==26.10.1",
+    "flake8==7.4.1",
+    "ruff==0.17.0",
+]
+
+[project.scripts]
+jev-gate = "jev_gate.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["jev_gate*"]
+
+[tool.setuptools.package-data]
+jev_gate = ["packs/*.yml", "scopes.yml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-p randomly --fail-slow=5s"
+markers = ["online: requires internet access", "deep: integration tests with real git repositories"]
+
+[tool.black]
+line-length = 88
+
+[tool.ruff]
+line-length = 88
+
+[tool.coverage.run]
+source = ["jev_gate"]
+
+[tool.ruff.lint]
+# eo.md 9.2 requires every raised exception to be a plain Exception.
+ignore = ["TRY002"]
+
+[tool.ruff.lint.per-file-ignores]
+# The entry point is the one place that recovers from every failure (eo.md 9.2).
+"jev_gate/__main__.py" = ["BLE001"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["jev_gate", "fakes", "scratch"]
+
+[tool.coverage.report]
+exclude_also = ["@abstractmethod"]
